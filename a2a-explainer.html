@@ -739,9 +739,7 @@ response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span
     <div class="section-label">El código del demo</div>
     <h2>Cómo está construido el demo</h2>
 
-    <p>El demo tiene dos archivos principales en <code>demo/</code>.
-    A diferencia de los ejemplos de Microsoft que necesitan Azure, este funciona sin ninguna
-    credencial — el "agente" es puro Python.</p>
+    <p>El demo tiene dos archivos principales en <code>demo/</code>.</p>
 
     <h3>server.py — el agente servidor</h3>
     <p>La pieza más importante es el <strong>executor</strong>: la clase que implementa la lógica del agente.</p>
@@ -830,7 +828,7 @@ response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span
       <div class="card">
         <h4>demo/server.py</h4>
         <p>Usa <code>CalculatorExecutor()</code> directamente — implementa el mismo interface
-        <code>AgentExecutor</code> del SDK pero sin LLM. Corre sin credenciales.</p>
+        <code>AgentExecutor</code> del SDK.</p>
       </div>
     </div>
   </div>
@@ -1173,9 +1171,8 @@ agent = <span class="cls">Agent</span>(
 )
 executor = <span class="cls">A2AExecutor</span>(agent, stream=<span class="kw">True</span>)  <span class="cm"># ← envuelve el Agent en un AgentExecutor A2A</span>
 
-<span class="cm"># El demo hace lo mismo pero sin LLM:
-# CalculatorExecutor implementa AgentExecutor directamente</span>
-executor = <span class="cls">CalculatorExecutor</span>()  <span class="cm"># ← mismo interface, sin FoundryChatClient</span></code></pre>
+<span class="cm"># El demo implementa AgentExecutor directamente</span>
+executor = <span class="cls">CalculatorExecutor</span>()  <span class="cm"># ← mismo interface</span></code></pre>
     </div>
   </div>
 </section>
