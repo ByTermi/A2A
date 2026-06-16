@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía A2A — Agent-to-Agent Protocol</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3347;
+    --accent: #7c6af7;
+    --accent2: #4fc3f7;
+    --accent3: #66bb6a;
+    --accent4: #ffa726;
+    --text: #e2e4f0;
+    --muted: #8b8fa8;
+    --code-bg: #12141e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  a { color: var(--accent2); text-decoration: none; }
+
+  /* Layout */
+  .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 24px 48px;
+    text-align: center;
+  }
+  header .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* Nav */
+  nav {
+    position: sticky;
+    top: 0;
+    background: rgba(15,17,23,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    padding: 0 24px;
+  }
+  nav ul {
+    display: flex;
+    gap: 0;
+    list-style: none;
+    overflow-x: auto;
+    max-width: 900px;
+    margin: 0 auto;
+    scrollbar-width: none;
+  }
+  nav ul::-webkit-scrollbar { display: none; }
+  nav ul li a {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 14px 16px;
+    white-space: nowrap;
+    transition: color .2s;
+    border-bottom: 2px solid transparent;
+  }
+  nav ul li a:hover { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* Sections */
+  section {
+    padding: 64px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  section:last-child { border-bottom: none; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 20px;
+  }
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 32px 0 12px;
+    color: var(--accent2);
+  }
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent4);
+    margin: 24px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  p { color: var(--muted); margin-bottom: 16px; }
+  p strong { color: var(--text); }
+  ul, ol { color: var(--muted); padding-left: 20px; margin-bottom: 16px; }
+  li { margin-bottom: 6px; }
+  li strong { color: var(--text); }
+
+  /* Code */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    font-size: 13px;
+  }
+  p code, li code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--accent2);
+    font-size: 12px;
+  }
+
+  /* Syntax highlight (manual) */
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+  .cls { color: #ffcb6b; }
+  .dec { color: #89ddff; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .card h4 { margin-top: 0; }
+  .card p { margin-bottom: 0; font-size: 14px; }
+
+  /* Diagram */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .diagram pre {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  /* Flow diagrams */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    min-width: 120px;
+  }
+  .flow-box.client { border-color: var(--accent); color: var(--accent); }
+  .flow-box.server { border-color: var(--accent3); color: var(--accent3); }
+  .flow-box.protocol { border-color: var(--accent2); color: var(--accent2); }
+  .flow-arrow {
+    color: var(--muted);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Steps */
+  .steps { counter-reset: step; }
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: flex-start;
+  }
+  .step-num {
+    counter-increment: step;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-content h4 { margin-top: 0; color: var(--text); font-size: 15px; }
+  .step-content p { margin-bottom: 0; font-size: 14px; }
+
+  /* Pattern tabs */
+  .pattern {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .pattern-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .pattern-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .badge-sync { background: rgba(124,106,247,0.2); color: var(--accent); border: 1px solid rgba(124,106,247,0.4); }
+  .badge-stream { background: rgba(79,195,247,0.15); color: var(--accent2); border: 1px solid rgba(79,195,247,0.3); }
+  .badge-poll { background: rgba(102,187,106,0.15); color: var(--accent3); border: 1px solid rgba(102,187,106,0.3); }
+  .pattern-title { font-weight: 600; font-size: 16px; }
+  .pattern-body { padding: 20px; }
+  .pattern-body p { font-size: 14px; margin-bottom: 12px; }
+  .pattern-body pre { margin: 12px 0 0; }
+
+  /* Glossary */
+  .glossary-item {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  .glossary-item:last-child { border-bottom: none; }
+  .glossary-term {
+    font-weight: 700;
+    color: var(--accent2);
+    font-family: monospace;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .glossary-def { color: var(--muted); font-size: 14px; }
+
+  /* Callout */
+  .callout {
+    border-left: 3px solid;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout.info { border-color: var(--accent2); background: rgba(79,195,247,0.06); color: var(--text); }
+  .callout.tip { border-color: var(--accent3); background: rgba(102,187,106,0.06); color: var(--text); }
+  .callout.warn { border-color: var(--accent4); background: rgba(255,167,38,0.06); color: var(--text); }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 600px) {
+    .flow { flex-direction: column; align-items: flex-start; }
+    .flow-arrow { transform: rotate(90deg); }
+    .card-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Protocolo A2A</div>
+  <h1>Agent-to-Agent (A2A)</h1>
+  <p>Guía completa desde cero — qué es, cómo funciona, y cómo leer el código del demo.</p>
+</header>
+
+<nav>
+  <ul>
+    <li><a href="#que-es">¿Qué es?</a></li>
+    <li><a href="#arquitectura">Arquitectura</a></li>
+    <li><a href="#agentcard">AgentCard</a></li>
+    <li><a href="#flujo">Flujo de una tarea</a></li>
+    <li><a href="#patrones">3 Patrones</a></li>
+    <li><a href="#demo">El demo</a></li>
+    <li><a href="#ejecutar">Ejecutar</a></li>
+    <li><a href="#glosario">Glosario</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════ QUÉ ES -->
+<section id="que-es">
+  <div class="container">
+    <div class="section-label">Concepto base</div>
+    <h2>¿Qué es el protocolo A2A?</h2>
+
+    <p>
+      <strong>A2A (Agent-to-Agent)</strong> es un protocolo abierto para que agentes de IA
+      de distintos fabricantes y frameworks hablen entre sí de forma estándar.
+      Igual que HTTP permite que cualquier navegador acceda a cualquier web,
+      A2A permite que cualquier agente cliente llame a cualquier agente servidor.
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4>Sin A2A</h4>
+        <p>Cada sistema tiene su propio formato de API. Un agente de Microsoft no puede llamar a uno de Google sin código de integración ad-hoc.</p>
+      </div>
+      <div class="card">
+        <h4>Con A2A</h4>
+        <p>Cualquier agente que implemente el protocolo puede comunicarse con cualquier otro, independientemente del framework o empresa.</p>
+      </div>
+      <div class="card">
+        <h4>En la práctica</h4>
+        <p>El agente servidor expone un endpoint HTTP. El cliente lo descubre leyendo su "tarjeta de presentación" y luego le manda tareas via JSON-RPC.</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <strong>Analogía sencilla</strong>
+      A2A es como contratar a un especialista externo: el cliente publica una tarea, el especialista la ejecuta y devuelve el resultado — sin que el cliente sepa cómo trabaja por dentro.
+    </div>
+
+    <h3>¿Por qué importa?</h3>
+    <ul>
+      <li>Puedes construir un agente "orquestador" que delegue subtareas a agentes especializados.</li>
+      <li>Puedes reemplazar un agente por otro sin cambiar el cliente.</li>
+      <li>Funciona con streaming (respuestas en tiempo real) y tareas largas en background.</li>
+      <li>El estándar lo mantiene la comunidad — no está atado a ningún proveedor.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ ARQUITECTURA -->
+<section id="arquitectura">
+  <div class="container">
+    <div class="section-label">Estructura del sistema</div>
+    <h2>Arquitectura cliente-servidor</h2>
+
+    <p>Una comunicación A2A siempre tiene dos partes:</p>
+
+    <div class="flow">
+      <div class="flow-box client">Cliente<br><small>envía tarea</small></div>
+      <div class="flow-arrow">──────▶</div>
+      <div class="flow-box protocol">A2A<br><small>JSON-RPC / HTTP</small></div>
+      <div class="flow-arrow">──────▶</div>
+      <div class="flow-box server">Servidor / Agente<br><small>ejecuta y responde</small></div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4>Servidor (Agente)</h4>
+        <p>
+          Es el agente que tiene una habilidad. Expone un endpoint HTTP, publica su
+          <code>AgentCard</code> en <code>/.well-known/agent.json</code>, y recibe tareas
+          via JSON-RPC POST en <code>/</code>.
+        </p>
+      </div>
+      <div class="card">
+        <h4>Cliente</h4>
+        <p>
+          Es quien quiere usar la habilidad. Primero lee la <code>AgentCard</code>
+          del servidor para descubrir sus capacidades, luego envía mensajes usando
+          el método <code>message/send</code> o <code>message/stream</code>.
+        </p>
+      </div>
+    </div>
+
+    <h3>¿Qué tecnologías usa?</h3>
+    <ul>
+      <li><strong>JSON-RPC 2.0</strong> — formato de las llamadas (petición + respuesta con ID único).</li>
+      <li><strong>HTTP/S</strong> — transporte. El servidor es un endpoint HTTP normal.</li>
+      <li><strong>Server-Sent Events (SSE)</strong> — para streaming: el servidor envía chunks del resultado a medida que los produce.</li>
+      <li><strong>Starlette + uvicorn</strong> — en Python, el framework ASGI que maneja las conexiones HTTP.</li>
+    </ul>
+
+    <div class="diagram">
+      <pre>
+  CLIENTE                           SERVIDOR (Agente)
+  ──────                            ─────────────────
+
+  1. GET /.well-known/agent.json  ──▶  devuelve AgentCard (nombre, skills, URL)
+
+  2. POST / (JSON-RPC)            ──▶  { method: "message/send",
+     message: "42 + 58"                 params: { message: { parts: [{ text: "42 + 58" }] } } }
+
+  3. ◀── respuesta                     { result: { ... texto: "42 + 58 = 100" } }
+      (non-streaming)
+
+  o bien:
+
+  3b. ◀── SSE stream                   data: {"artifact": {"parts": [{"text": "4"}]}}
+      (streaming, token a token)       data: {"artifact": {"parts": [{"text": "2"}]}}
+                                       data: {"artifact": {"parts": [{"text": " "}]}}
+                                       ...
+                                       data: {"status": {"state": "COMPLETED"}}
+      </pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ AGENTCARD -->
+<section id="agentcard">
+  <div class="container">
+    <div class="section-label">Descubrimiento</div>
+    <h2>AgentCard — la tarjeta de presentación</h2>
+
+    <p>
+      Antes de enviar una tarea, el cliente necesita saber <em>qué puede hacer</em> el agente
+      y <em>cómo hablarle</em>. Eso está en la <strong>AgentCard</strong>, un JSON que el servidor
+      publica en <code>/.well-known/agent.json</code>.
+    </p>
+
+    <div class="callout info">
+      <strong>Equivalente web</strong>
+      Es como el archivo <code>robots.txt</code> o <code>sitemap.xml</code> — una URL conocida donde
+      cualquier cliente puede ir a descubrir las capacidades del agente.
+    </div>
+
+    <h3>Ejemplo de AgentCard del demo</h3>
+    <p>Esto es lo que devuelve <code>GET http://localhost:5001/.well-known/agent.json</code>:</p>
+
+    <pre><code><span class="dec">{</span>
+  <span class="str">"name"</span>: <span class="str">"CalculatorAgent"</span>,
+  <span class="str">"description"</span>: <span class="str">"Evaluates arithmetic expressions: + - * / ** % ( )"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"capabilities"</span>: <span class="dec">{</span>
+    <span class="str">"streaming"</span>: <span class="kw">true</span>,       <span class="cm">← soporta SSE</span>
+    <span class="str">"pushNotifications"</span>: <span class="kw">false</span>
+  <span class="dec">}</span>,
+  <span class="str">"skills"</span>: <span class="dec">[</span><span class="dec">{</span>
+    <span class="str">"id"</span>: <span class="str">"calculate"</span>,
+    <span class="str">"name"</span>: <span class="str">"Calculate"</span>,
+    <span class="str">"description"</span>: <span class="str">"Evaluate an arithmetic expression and return the result."</span>,
+    <span class="str">"examples"</span>: <span class="dec">[</span><span class="str">"42 + 58"</span>, <span class="str">"What is 3.14 * 2?"</span><span class="dec">]</span>
+  <span class="dec">}]</span>,
+  <span class="str">"supportedInterfaces"</span>: <span class="dec">[{</span>
+    <span class="str">"url"</span>: <span class="str">"http://localhost:5001/"</span>,
+    <span class="str">"protocolBinding"</span>: <span class="str">"JSONRPC"</span>
+  <span class="dec">}]</span>
+<span class="dec">}</span></code></pre>
+
+    <h3>Cómo la lee el cliente</h3>
+    <pre><code><span class="cm"># client.py — paso 0: descubrimiento</span>
+<span class="kw">async with</span> httpx.<span class="cls">AsyncClient</span>() <span class="kw">as</span> http_client:
+    resolver = <span class="cls">A2ACardResolver</span>(httpx_client=http_client, base_url=<span class="str">"http://localhost:5001/"</span>)
+    agent_card = <span class="kw">await</span> resolver.<span class="fn">get_agent_card</span>()
+    <span class="cm"># agent_card.name        → "CalculatorAgent"</span>
+    <span class="cm"># agent_card.skills      → [Skill(id="calculate", ...)]</span>
+    <span class="cm"># agent_card.capabilities.streaming → True</span></code></pre>
+
+    <p>A partir de la AgentCard, el cliente crea un objeto <code>A2AAgent</code> que encapsula
+    toda la comunicación posterior.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ FLUJO -->
+<section id="flujo">
+  <div class="container">
+    <div class="section-label">Ciclo de vida</div>
+    <h2>Flujo completo de una tarea</h2>
+
+    <p>Cuando el cliente envía un mensaje, el servidor lo convierte en una <strong>Task</strong>
+    (tarea). Las tareas tienen estados y el servidor va actualizando el cliente.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Cliente envía mensaje</h4>
+          <p>El cliente llama a <code>agent.run("42 + 58")</code>. Por debajo, el SDK serializa el
+          texto en un objeto <code>Message</code> y lo manda via JSON-RPC al endpoint del servidor.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Servidor crea una Task (WORKING)</h4>
+          <p>El <code>DefaultRequestHandler</code> recibe el mensaje, genera un <code>task_id</code>
+          único, y llama al <code>AgentExecutor.execute()</code>. El ejecutor primero encola un
+          evento <code>Task</code> con estado <code>WORKING</code> para señalizar que empezó.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Servidor produce artefactos</h4>
+          <p>El ejecutor encola eventos <code>TaskArtifactUpdateEvent</code> con fragmentos del resultado.
+          En el demo, envía la respuesta carácter a carácter. En un agente LLM, enviaría tokens.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Servidor cierra con COMPLETED</h4>
+          <p>Al terminar, el ejecutor encola <code>TaskStatusUpdateEvent</code> con estado
+          <code>COMPLETED</code>. El framework cierra el stream SSE (si lo hay) y la tarea queda
+          archivada en el <code>InMemoryTaskStore</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Cliente recibe la respuesta</h4>
+          <p>Según el patrón elegido (sync, stream, poll), el cliente obtiene el texto final
+          ensamblado a partir de todos los artefactos.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Estados de una Task</h3>
+    <div class="diagram">
+      <pre>
+  ┌──────────────┐     ┌─────────────┐     ┌───────────────┐
+  │   SUBMITTED  │────▶│   WORKING   │────▶│   COMPLETED   │
+  └──────────────┘     └─────────────┘     └───────────────┘
+                              │
+                              ├──────────────────────────────▶ CANCELED
+                              │
+                              └──────────────────────────────▶ FAILED
+      </pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ PATRONES -->
+<section id="patrones">
+  <div class="container">
+    <div class="section-label">Comunicación</div>
+    <h2>Los 3 patrones de comunicación</h2>
+
+    <p>A2A soporta tres formas distintas de recibir la respuesta. Los tres usan
+    el mismo servidor — la diferencia está en cómo el <strong>cliente</strong> hace la llamada.</p>
+
+    <!-- Patrón 1 -->
+    <div class="pattern">
+      <div class="pattern-header">
+        <span class="pattern-badge badge-sync">Patrón 1</span>
+        <span class="pattern-title">Non-streaming (síncrono)</span>
+      </div>
+      <div class="pattern-body">
+        <p>
+          El cliente envía la tarea y <strong>espera bloqueado</strong> hasta que el servidor termina.
+          Aunque el servidor internamente use streaming y vaya enviando artefactos, el SDK del
+          cliente los ensambla y devuelve el resultado final completo de golpe.
+        </p>
+        <p>
+          <strong>Cuándo usarlo:</strong> tareas cortas donde no necesitas ver el progreso —
+          cálculos, consultas, respuestas rápidas.
+        </p>
+        <pre><code><span class="cm"># agent.run() sin stream=True → espera y devuelve resultado completo</span>
+response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"42 + 58"</span>)
+<span class="fn">print</span>(response.text)   <span class="cm"># "42 + 58 = 100"</span></code></pre>
+        <div class="diagram">
+          <pre>
+  Cliente           Servidor
+  ───────           ────────
+  run("42 + 58") ──▶  [WORKING] evalúa...
+                   ◀──  artefacto: "4"
+                   ◀──  artefacto: "2"
+                   ◀──  artefacto: " + 58 = 100"
+                   ◀──  [COMPLETED]
+  response.text = "42 + 58 = 100"  (ensamblado por el SDK)
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patrón 2 -->
+    <div class="pattern">
+      <div class="pattern-header">
+        <span class="pattern-badge badge-stream">Patrón 2</span>
+        <span class="pattern-title">Streaming (SSE)</span>
+      </div>
+      <div class="pattern-body">
+        <p>
+          El cliente recibe cada fragmento del resultado <strong>a medida que el servidor lo produce</strong>.
+          Usa Server-Sent Events (SSE): la conexión HTTP se mantiene abierta y el servidor
+          va empujando datos. Ideal para mostrar texto "escribiéndose" en tiempo real.
+        </p>
+        <p>
+          <strong>Cuándo usarlo:</strong> respuestas largas de LLM, interfaces tipo chat donde
+          quieres que el usuario vea el texto aparecer progresivamente.
+        </p>
+        <pre><code><span class="cm"># stream=True → itera sobre actualizaciones en tiempo real</span>
+stream = agent.<span class="fn">run</span>(<span class="str">"999 * 999"</span>, stream=<span class="kw">True</span>)
+<span class="kw">async for</span> update <span class="kw">in</span> stream:
+    <span class="kw">for</span> content <span class="kw">in</span> update.contents:
+        <span class="kw">if</span> content.text:
+            <span class="fn">print</span>(content.text, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+<span class="cm"># imprime: 9  9  9     *     9  9  9     =     9  9  8  0  0  1</span>
+<span class="cm"># (carácter a carácter conforme llegan)</span>
+
+final = <span class="kw">await</span> stream.<span class="fn">get_final_response</span>()
+<span class="fn">print</span>(final.text)   <span class="cm"># "999 * 999 = 998001"</span></code></pre>
+        <div class="diagram">
+          <pre>
+  Cliente           Servidor  (conexión SSE abierta)
+  ───────           ──────────────────────────────
+  run(stream=True) ──▶  [WORKING]
+                   ◀──  SSE: "9"   (char 0)
+  print "9"
+                   ◀──  SSE: "9"   (char 1)
+  print "9"
+                   ◀──  SSE: "9"   (char 2)
+  print "9"
+                   ◀──  SSE: " * 999 = 998001"
+  print " * 999 = 998001"
+                   ◀──  SSE: [COMPLETED]
+  conexión cerrada
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patrón 3 -->
+    <div class="pattern">
+      <div class="pattern-header">
+        <span class="pattern-badge badge-poll">Patrón 3</span>
+        <span class="pattern-title">Background + Polling</span>
+      </div>
+      <div class="pattern-body">
+        <p>
+          El cliente dispara la tarea y <strong>el servidor responde inmediatamente</strong>
+          con un <em>continuation token</em> (token de seguimiento). El cliente sigue haciendo
+          otras cosas y periódicamente pregunta "¿ya terminaste?" usando ese token.
+        </p>
+        <p>
+          <strong>Cuándo usarlo:</strong> tareas muy largas (minutos, horas), sistemas donde
+          el cliente puede desconectarse y reconectarse más tarde.
+        </p>
+        <pre><code><span class="cm"># background=True → el servidor responde inmediatamente con token</span>
+response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"2 ** 32"</span>, background=<span class="kw">True</span>)
+
+<span class="kw">if</span> response.continuation_token <span class="kw">is None</span>:
+    <span class="fn">print</span>(<span class="str">"Completado al instante:"</span>, response.text)
+<span class="kw">else</span>:
+    token = response.continuation_token
+    <span class="kw">while</span> token <span class="kw">is not None</span>:
+        <span class="fn">print</span>(<span class="str">"Tarea en progreso, esperando..."</span>)
+        <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="num">0.5</span>)
+        response = <span class="kw">await</span> agent.<span class="fn">poll_task</span>(token)
+        token = response.continuation_token
+    <span class="fn">print</span>(<span class="str">"Resultado:"</span>, response.text)   <span class="cm"># "2 ** 32 = 4294967296"</span></code></pre>
+        <div class="diagram">
+          <pre>
+  Cliente                              Servidor
+  ───────                              ────────
+  run(background=True) ─────────────▶  inicia tarea, devuelve token
+  ◀─ { continuation_token: "task-xyz" }
+
+  (el cliente hace otras cosas)
+
+  poll_task("task-xyz") ────────────▶  ¿terminaste? → No
+  ◀─ { continuation_token: "task-xyz" }
+
+  poll_task("task-xyz") ────────────▶  ¿terminaste? → Sí
+  ◀─ { text: "2 ** 32 = 4294967296", continuation_token: None }
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ DEMO -->
+<section id="demo">
+  <div class="container">
+    <div class="section-label">El código del demo</div>
+    <h2>Cómo está construido el demo</h2>
+
+    <p>El demo tiene dos archivos principales en <code>demo/</code>.
+    A diferencia de los ejemplos de Microsoft que necesitan Azure, este funciona sin ninguna
+    credencial — el "agente" es puro Python.</p>
+
+    <h3>server.py — el agente servidor</h3>
+    <p>La pieza más importante es el <strong>executor</strong>: la clase que implementa la lógica del agente.</p>
+
+    <pre><code><span class="kw">class</span> <span class="cls">CalculatorExecutor</span>(<span class="cls">AgentExecutor</span>):
+    <span class="cm"># AgentExecutor es una clase abstracta del a2a-sdk.
+    # En los ejemplos de Microsoft, A2AExecutor() hace lo mismo pero
+    # envolviendo un agente LLM (Azure/OpenAI). Aquí lo implementamos
+    # directamente con Python puro.</span>
+
+    <span class="kw">async def</span> <span class="fn">execute</span>(self, context: <span class="cls">RequestContext</span>, event_queue: <span class="cls">EventQueue</span>) -> <span class="kw">None</span>:
+
+        <span class="cm"># 1. Obtenemos el texto que escribió el usuario</span>
+        user_text = context.<span class="fn">get_user_input</span>()   <span class="cm"># "42 + 58"</span>
+
+        <span class="cm"># 2. Señalizamos que empezamos (Task en estado WORKING)</span>
+        <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(
+            <span class="cls">Task</span>(id=task_id, status=<span class="cls">TaskStatus</span>(state=<span class="cls">TaskState</span>.TASK_STATE_WORKING))
+        )
+
+        <span class="cm"># 3. Evaluamos la expresión matemática (safe_eval, sin eval() directo)</span>
+        result_str = <span class="fn">safe_eval</span>(<span class="fn">extract_expression</span>(user_text))
+
+        <span class="cm"># 4. Enviamos el resultado carácter a carácter (demuestra streaming)</span>
+        <span class="kw">for</span> i, char <span class="kw">in</span> <span class="fn">enumerate</span>(result_str):
+            <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(
+                <span class="cls">TaskArtifactUpdateEvent</span>(artifact=<span class="cls">Artifact</span>(parts=[<span class="cls">Part</span>(text=char)]),
+                                         append=(i > <span class="num">0</span>), last_chunk=(i == <span class="fn">len</span>(result_str)-<span class="num">1</span>))
+            )
+            <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="num">0.04</span>)   <span class="cm"># simula trabajo lento</span>
+
+        <span class="cm"># 5. Marcamos la tarea como completada</span>
+        <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(
+            <span class="cls">TaskStatusUpdateEvent</span>(status=<span class="cls">TaskStatus</span>(state=<span class="cls">TaskState</span>.TASK_STATE_COMPLETED))
+        )</code></pre>
+
+    <div class="callout tip">
+      <strong>¿Por qué char a char?</strong>
+      Para que el streaming sea visible en el demo. Un agente LLM real envía tokens (palabras o
+      fragmentos de palabras) a medida que el modelo los genera. El principio es exactamente el mismo.
+    </div>
+
+    <h3>Evaluador matemático seguro</h3>
+    <p>En vez de usar <code>eval("42 + 58")</code> (peligroso — permite ejecutar código arbitrario),
+    el demo usa el AST (árbol sintáctico) de Python: parsea la expresión, recorre el árbol y solo
+    permite nodos de tipo número y operadores aritméticos.</p>
+
+    <pre><code><span class="cm"># En vez de: eval("42 + 58")  ← PELIGROSO</span>
+<span class="cm"># Usamos: ast.parse() → recorrer árbol → solo números y operadores</span>
+
+<span class="kw">def</span> <span class="fn">safe_eval</span>(expression: <span class="fn">str</span>) -> <span class="fn">float</span>:
+    tree = ast.<span class="fn">parse</span>(expression, mode=<span class="str">"eval"</span>)
+    <span class="kw">return</span> <span class="fn">_eval_node</span>(tree.body)
+
+<span class="kw">def</span> <span class="fn">_eval_node</span>(node):
+    <span class="kw">if isinstance</span>(node, ast.<span class="cls">Constant</span>):  <span class="cm"># número → lo devolvemos</span>
+        <span class="kw">return</span> <span class="fn">float</span>(node.value)
+    <span class="kw">if isinstance</span>(node, ast.<span class="cls">BinOp</span>):   <span class="cm"># operación binaria: a + b</span>
+        op_fn = _SAFE_OPS[<span class="fn">type</span>(node.op)]  <span class="cm"># solo +, -, *, /, **, %</span>
+        <span class="kw">return</span> <span class="fn">op_fn</span>(<span class="fn">_eval_node</span>(node.left), <span class="fn">_eval_node</span>(node.right))
+    <span class="kw">raise</span> <span class="cls">ValueError</span>(<span class="str">f"No permitido: {type(node).__name__}"</span>)</code></pre>
+
+    <h3>client.py — el consumidor</h3>
+    <p>El cliente usa <code>A2AAgent</code> del SDK de Microsoft, exactamente igual que los
+    ejemplos descargados. La diferencia es que apunta a nuestro servidor local en vez de Azure.</p>
+
+    <pre><code><span class="cm"># Los 3 patrones usan el mismo objeto A2AAgent, solo cambia cómo se llama a .run()</span>
+
+<span class="cm"># Patrón 1: Non-streaming</span>
+response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"42 + 58"</span>)
+
+<span class="cm"># Patrón 2: Streaming</span>
+stream = agent.<span class="fn">run</span>(<span class="str">"999 * 999"</span>, stream=<span class="kw">True</span>)
+
+<span class="cm"># Patrón 3: Background + poll</span>
+response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"2 ** 32"</span>, background=<span class="kw">True</span>)</code></pre>
+
+    <h3>Comparación con los ejemplos descargados</h3>
+    <div class="card-grid">
+      <div class="card">
+        <h4>04-hosting_a2a/a2a_server.py</h4>
+        <p>Usa <code>A2AExecutor(agent)</code> donde <code>agent</code> es un <code>Agent</code>
+        de Microsoft con un LLM de Azure detrás. Necesita <code>FOUNDRY_PROJECT_ENDPOINT</code>
+        y <code>az login</code>.</p>
+      </div>
+      <div class="card">
+        <h4>demo/server.py</h4>
+        <p>Usa <code>CalculatorExecutor()</code> directamente — implementa el mismo interface
+        <code>AgentExecutor</code> del SDK pero sin LLM. Corre sin credenciales.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EJECUTAR -->
+<section id="ejecutar">
+  <div class="container">
+    <div class="section-label">Puesta en marcha</div>
+    <h2>Cómo ejecutar el demo</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Instalar dependencias</h4>
+          <pre><code>cd demo
+pip install -r requirements.txt</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Arrancar el servidor (terminal 1)</h4>
+          <pre><code>python demo/server.py
+<span class="cm"># CalculatorAgent — A2A server
+# Listening : http://localhost:5001/
+# Agent card: http://localhost:5001/.well-known/agent.json</span></code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Ejecutar el cliente (terminal 2)</h4>
+          <pre><code>python demo/client.py
+<span class="cm"># Found agent : CalculatorAgent
+# Skills      : ['Calculate']
+#
+# Pattern 1: Non-streaming
+#   Q: 42 + 58           A: 42 + 58 = 100
+#   Q: What is 3.14 * 2? A: 3.14 * 2 = 6.28
+#
+# Pattern 2: Streaming (SSE)
+#   A: 9 9 9   *   9 9 9   =   9 9 8 0 0 1  ← aparece carácter a carácter
+#
+# Pattern 3: Background + polling
+#   Poll #1 — task in progress...
+#   Completed after 2 poll(s): 2 ** 32 = 4294967296</span></code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Verificar la AgentCard en el navegador</h4>
+          <p>Con el servidor corriendo, abre: <a href="http://localhost:5001/.well-known/agent.json">http://localhost:5001/.well-known/agent.json</a></p>
+          <p>Verás el JSON completo de la tarjeta del agente.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Para los ejemplos de Azure (04-hosting_a2a/)</h3>
+    <div class="callout warn">
+      <strong>Necesitas Azure</strong>
+      Los ejemplos en <code>04-hosting_a2a/</code> requieren una cuenta Azure con AI Foundry.
+      El <code>.env</code> compartido ya tiene las variables — solo edita <code>FOUNDRY_PROJECT_ENDPOINT</code>
+      con tu endpoint real y ejecuta <code>az login</code> antes de arrancar.
+    </div>
+
+    <pre><code><span class="cm"># Terminal 1 — servidor de facturas en puerto 5000</span>
+cd 04-hosting_a2a
+pip install -r requirements.txt
+python a2a_server.py --agent-type invoice --port 5000
+
+<span class="cm"># Terminal 2 — cliente (apunta al servidor de facturas)</span>
+<span class="cm"># Cambia A2A_AGENT_HOST=http://localhost:5000/ en .env primero</span>
+cd 02-agents_a2a
+python agent_with_a2a.py</code></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ GLOSARIO -->
+<section id="glosario">
+  <div class="container">
+    <div class="section-label">Referencia</div>
+    <h2>Glosario A2A</h2>
+
+    <div class="glossary-item">
+      <div class="glossary-term">AgentCard</div>
+      <div class="glossary-def">JSON de descubrimiento del agente. Se publica en <code>/.well-known/agent.json</code>. Contiene nombre, descripción, skills, URL del endpoint y capacidades (streaming, push notifications).</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">AgentSkill</div>
+      <div class="glossary-def">Una habilidad específica que expone el agente. Tiene ID, nombre, descripción y ejemplos de uso. Un agente puede tener múltiples skills.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">Task</div>
+      <div class="glossary-def">Unidad de trabajo en A2A. Tiene un ID único y pasa por estados: WORKING → COMPLETED / CANCELED / FAILED. Puede llevar artefactos (la respuesta).</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">AgentExecutor</div>
+      <div class="glossary-def">Interfaz abstracta que todo servidor A2A debe implementar. Define el método <code>execute(context, event_queue)</code> — ahí va la lógica del agente (LLM, reglas, lo que sea).</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">EventQueue</div>
+      <div class="glossary-def">Cola de eventos que el executor usa para enviar resultados al cliente. Se encolan objetos Task, TaskArtifactUpdateEvent y TaskStatusUpdateEvent.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">TaskArtifactUpdateEvent</div>
+      <div class="glossary-def">Evento que transporta un fragmento del resultado (texto, imagen, etc.). Tiene <code>append=True</code> para chunks adicionales y <code>last_chunk=True</code> en el último.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">TaskStatusUpdateEvent</div>
+      <div class="glossary-def">Evento de cambio de estado de la tarea. El más importante es el final con <code>TASK_STATE_COMPLETED</code> que cierra la tarea.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">continuation_token</div>
+      <div class="glossary-def">Token opaco que identifica una tarea en curso. Devuelto cuando se usa <code>background=True</code>. Se pasa a <code>poll_task()</code> para consultar el progreso.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">A2ACardResolver</div>
+      <div class="glossary-def">Clase del SDK cliente que descarga y parsea la AgentCard de un servidor A2A dado su URL base.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">A2AAgent</div>
+      <div class="glossary-def">Clase del SDK cliente que encapsula toda la comunicación con un servidor A2A. Expone <code>.run()</code> con los tres patrones (sync, stream, background).</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">DefaultRequestHandler</div>
+      <div class="glossary-def">El "router" del servidor A2A. Recibe las llamadas JSON-RPC, gestiona el ciclo de vida de las tareas, llama al AgentExecutor, y envía los eventos de vuelta al cliente.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">InMemoryTaskStore</div>
+      <div class="glossary-def">Almacén de tareas en memoria RAM (se pierde al reiniciar el servidor). En producción se reemplazaría por un store persistente (Redis, base de datos).</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">JSON-RPC 2.0</div>
+      <div class="glossary-def">Protocolo de llamada a procedimientos remotos sobre JSON. Cada petición tiene un <code>method</code> (ej. <code>"message/send"</code>), <code>params</code> y un <code>id</code> para correlacionar respuestas.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">SSE (Server-Sent Events)</div>
+      <div class="glossary-def">Tecnología HTTP estándar donde el servidor mantiene la conexión abierta y va enviando mensajes al cliente. Más simple que WebSockets para flujos unidireccionales (servidor → cliente).</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">A2AExecutor</div>
+      <div class="glossary-def">Implementación de AgentExecutor que envuelve un <code>Agent</code> del framework de Microsoft. Traduce entre la API del framework y los eventos A2A. El demo no lo usa — implementa AgentExecutor directamente.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Basado en <a href="https://github.com/microsoft/agent-framework">microsoft/agent-framework</a> — muestras <code>02-agents/a2a</code> y <code>04-hosting/a2a</code></p>
+    <p style="margin-top: 8px; font-size: 12px;">Protocolo A2A: <a href="https://a2a-protocol.org">a2a-protocol.org</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

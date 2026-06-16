@@ -1,0 +1,17 @@
+# A2A protocol SDK — provides a2a.server.*, a2a.client.*, a2a.types
+a2a-sdk
+
+# agent_framework.a2a — provides A2AAgent (client-side) and A2AExecutor (server-side)
+agent-framework-a2a
+
+# ASGI server runtime
+uvicorn
+
+# HTTP client used by A2ACardResolver and A2AAgent
+httpx
+
+# Environment variable loading
+python-dotenv
+
+# ASGI app framework (also pulled in by a2a-sdk, listed explicitly for clarity)
+starlette
