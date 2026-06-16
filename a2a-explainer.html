@@ -920,62 +920,262 @@ python agent_with_a2a.py</code></pre>
     <div class="glossary-item">
       <div class="glossary-term">AgentCard</div>
       <div class="glossary-def">JSON de descubrimiento del agente. Se publica en <code>/.well-known/agent.json</code>. Contiene nombre, descripción, skills, URL del endpoint y capacidades (streaming, push notifications).</div>
+      <pre><code><span class="cm"># Así se construye en Python (server.py)</span>
+<span class="cls">AgentCard</span>(
+    name=<span class="str">"CalculatorAgent"</span>,
+    description=<span class="str">"Evaluates arithmetic expressions"</span>,
+    version=<span class="str">"1.0.0"</span>,
+    capabilities=<span class="cls">AgentCapabilities</span>(streaming=<span class="kw">True</span>),
+    supported_interfaces=[<span class="cls">AgentInterface</span>(url=<span class="str">"http://localhost:5001/"</span>, protocol_binding=<span class="str">"JSONRPC"</span>)],
+    skills=[<span class="cls">AgentSkill</span>(id=<span class="str">"calculate"</span>, name=<span class="str">"Calculate"</span>, ...)]
+)
+
+<span class="cm"># Así se ve en el navegador → GET http://localhost:5001/.well-known/agent.json</span>
+<span class="dec">{</span> <span class="str">"name"</span>: <span class="str">"CalculatorAgent"</span>, <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"capabilities"</span>: <span class="dec">{</span> <span class="str">"streaming"</span>: <span class="kw">true</span> <span class="dec">}</span>,
+  <span class="str">"skills"</span>: [<span class="dec">{</span> <span class="str">"id"</span>: <span class="str">"calculate"</span>, <span class="str">"name"</span>: <span class="str">"Calculate"</span> <span class="dec">}]</span> <span class="dec">}</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">AgentSkill</div>
       <div class="glossary-def">Una habilidad específica que expone el agente. Tiene ID, nombre, descripción y ejemplos de uso. Un agente puede tener múltiples skills.</div>
+      <pre><code><span class="cm"># Definición de una skill en el servidor</span>
+<span class="cls">AgentSkill</span>(
+    id=<span class="str">"calculate"</span>,               <span class="cm"># ID único — lo usa el cliente para seleccionar</span>
+    name=<span class="str">"Calculate"</span>,
+    description=<span class="str">"Evaluate an arithmetic expression"</span>,
+    tags=[<span class="str">"math"</span>, <span class="str">"calculator"</span>],
+    examples=[<span class="str">"42 + 58"</span>, <span class="str">"What is 3.14 * 2?"</span>]
+)
+
+<span class="cm"># El cliente puede ver las skills disponibles tras resolver la AgentCard</span>
+<span class="kw">for</span> skill <span class="kw">in</span> agent_card.skills:
+    <span class="fn">print</span>(skill.name, <span class="str">"→"</span>, skill.description)
+<span class="cm"># Calculate → Evaluate an arithmetic expression</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">Task</div>
       <div class="glossary-def">Unidad de trabajo en A2A. Tiene un ID único y pasa por estados: WORKING → COMPLETED / CANCELED / FAILED. Puede llevar artefactos (la respuesta).</div>
+      <pre><code><span class="cm"># El executor encola una Task al inicio para "registrar" el trabajo</span>
+<span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(
+    <span class="cls">Task</span>(
+        id=<span class="str">"task-abc-123"</span>,        <span class="cm"># ID único generado por el framework</span>
+        context_id=<span class="str">"ctx-xyz"</span>,    <span class="cm"># agrupa tareas relacionadas</span>
+        status=<span class="cls">TaskStatus</span>(state=<span class="cls">TaskState</span>.TASK_STATE_WORKING)
+    )
+)
+<span class="cm"># Desde ese momento el cliente sabe que hay una tarea viva con ese ID
+# y puede hacer polling con ese ID si usa background=True</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">AgentExecutor</div>
       <div class="glossary-def">Interfaz abstracta que todo servidor A2A debe implementar. Define el método <code>execute(context, event_queue)</code> — ahí va la lógica del agente (LLM, reglas, lo que sea).</div>
+      <pre><code><span class="cm"># La interfaz que debes implementar (del a2a-sdk)</span>
+<span class="kw">class</span> <span class="cls">AgentExecutor</span>(ABC):
+    <span class="kw">async def</span> <span class="fn">execute</span>(self, context: <span class="cls">RequestContext</span>, event_queue: <span class="cls">EventQueue</span>) -> <span class="kw">None</span>: ...
+    <span class="kw">async def</span> <span class="fn">cancel</span>(self, context: <span class="cls">RequestContext</span>, event_queue: <span class="cls">EventQueue</span>) -> <span class="kw">None</span>: ...
+
+<span class="cm"># Tu implementación (demo/server.py)</span>
+<span class="kw">class</span> <span class="cls">CalculatorExecutor</span>(<span class="cls">AgentExecutor</span>):
+    <span class="kw">async def</span> <span class="fn">execute</span>(self, context, event_queue):
+        text = context.<span class="fn">get_user_input</span>()     <span class="cm"># "42 + 58"</span>
+        result = <span class="fn">safe_eval</span>(text)             <span class="cm"># 100.0</span>
+        <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(...)  <span class="cm"># envía resultado</span>
+
+<span class="cm"># Comparación: en los ejemplos de Microsoft usan A2AExecutor que envuelve un LLM</span>
+executor = <span class="cls">A2AExecutor</span>(<span class="fn">Agent</span>(client=<span class="cls">FoundryChatClient</span>(...), ...))</code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">EventQueue</div>
       <div class="glossary-def">Cola de eventos que el executor usa para enviar resultados al cliente. Se encolan objetos Task, TaskArtifactUpdateEvent y TaskStatusUpdateEvent.</div>
+      <pre><code><span class="cm"># El executor recibe event_queue como parámetro — solo puede escribir en ella</span>
+<span class="kw">async def</span> <span class="fn">execute</span>(self, context, event_queue):
+
+    <span class="cm"># 1. Señaliza inicio</span>
+    <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(Task(..., status=WORKING))
+
+    <span class="cm"># 2. Envía fragmentos del resultado</span>
+    <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(TaskArtifactUpdateEvent(...))
+    <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(TaskArtifactUpdateEvent(...))
+
+    <span class="cm"># 3. Cierra la tarea</span>
+    <span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(TaskStatusUpdateEvent(..., status=COMPLETED))
+
+<span class="cm"># El framework lee la cola y reenvía cada evento al cliente via SSE o JSON-RPC</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">TaskArtifactUpdateEvent</div>
       <div class="glossary-def">Evento que transporta un fragmento del resultado (texto, imagen, etc.). Tiene <code>append=True</code> para chunks adicionales y <code>last_chunk=True</code> en el último.</div>
+      <pre><code><span class="cm"># Primer chunk (append=False): crea el artefacto</span>
+<span class="cls">TaskArtifactUpdateEvent</span>(
+    task_id=<span class="str">"task-123"</span>, context_id=<span class="str">"ctx-xyz"</span>,
+    artifact=<span class="cls">Artifact</span>(artifact_id=<span class="str">"art-1"</span>, parts=[<span class="cls">Part</span>(text=<span class="str">"4"</span>)]),
+    append=<span class="kw">False</span>, last_chunk=<span class="kw">False</span>
+)
+<span class="cm"># Chunks intermedios (append=True): añade al artefacto existente</span>
+<span class="cls">TaskArtifactUpdateEvent</span>(..., artifact=<span class="cls">Artifact</span>(parts=[<span class="cls">Part</span>(text=<span class="str">"2"</span>)]),
+    append=<span class="kw">True</span>, last_chunk=<span class="kw">False</span>)
+<span class="cls">TaskArtifactUpdateEvent</span>(..., artifact=<span class="cls">Artifact</span>(parts=[<span class="cls">Part</span>(text=<span class="str">" + 58 = 100"</span>)]),
+    append=<span class="kw">True</span>, last_chunk=<span class="kw">True</span>)  <span class="cm"># ← último chunk</span>
+
+<span class="cm"># El cliente ensambla: "4" + "2" + " + 58 = 100" = "42 + 58 = 100"</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">TaskStatusUpdateEvent</div>
       <div class="glossary-def">Evento de cambio de estado de la tarea. El más importante es el final con <code>TASK_STATE_COMPLETED</code> que cierra la tarea.</div>
+      <pre><code><span class="cm"># Al terminar el trabajo, el executor DEBE enviar este evento</span>
+<span class="cm"># De lo contrario el cliente espera indefinidamente</span>
+<span class="kw">await</span> event_queue.<span class="fn">enqueue_event</span>(
+    <span class="cls">TaskStatusUpdateEvent</span>(
+        task_id=<span class="str">"task-123"</span>,
+        context_id=<span class="str">"ctx-xyz"</span>,
+        status=<span class="cls">TaskStatus</span>(state=<span class="cls">TaskState</span>.TASK_STATE_COMPLETED)
+    )
+)
+<span class="cm"># Otros estados posibles:</span>
+<span class="cm">#   TASK_STATE_WORKING   → tarea en curso (al inicio)</span>
+<span class="cm">#   TASK_STATE_COMPLETED → terminó con éxito</span>
+<span class="cm">#   TASK_STATE_CANCELED  → cancelada por el cliente</span>
+<span class="cm">#   TASK_STATE_FAILED    → error (el framework lo pone si execute() lanza excepción)</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">continuation_token</div>
       <div class="glossary-def">Token opaco que identifica una tarea en curso. Devuelto cuando se usa <code>background=True</code>. Se pasa a <code>poll_task()</code> para consultar el progreso.</div>
+      <pre><code><span class="cm"># Cuando background=True y la tarea sigue corriendo, response tiene token</span>
+response = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"2 ** 32"</span>, background=<span class="kw">True</span>)
+
+<span class="fn">print</span>(response.continuation_token)
+<span class="cm"># { "task_id": "task-abc-123", "context_id": "ctx-xyz" }
+# Es un dict con los IDs necesarios para retomar la tarea</span>
+
+<span class="cm"># Si la tarea terminó antes de que preguntaras, el token es None</span>
+<span class="kw">if</span> response.continuation_token <span class="kw">is None</span>:
+    <span class="fn">print</span>(<span class="str">"Ya terminó:"</span>, response.text)   <span class="cm"># respuesta inmediata</span>
+<span class="kw">else</span>:
+    response = <span class="kw">await</span> agent.<span class="fn">poll_task</span>(response.continuation_token)</code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">A2ACardResolver</div>
       <div class="glossary-def">Clase del SDK cliente que descarga y parsea la AgentCard de un servidor A2A dado su URL base.</div>
+      <pre><code><span class="cm"># Siempre el primer paso antes de crear un A2AAgent</span>
+<span class="kw">async with</span> httpx.<span class="cls">AsyncClient</span>(timeout=<span class="num">60.0</span>) <span class="kw">as</span> http_client:
+    resolver = <span class="cls">A2ACardResolver</span>(
+        httpx_client=http_client,
+        base_url=<span class="str">"http://localhost:5001/"</span>
+    )
+    agent_card = <span class="kw">await</span> resolver.<span class="fn">get_agent_card</span>()
+    <span class="cm"># ↑ hace GET http://localhost:5001/.well-known/agent.json</span>
+    <span class="cm"># y devuelve un objeto AgentCard ya parseado</span>
+
+<span class="fn">print</span>(agent_card.name)          <span class="cm"># "CalculatorAgent"</span>
+<span class="fn">print</span>(agent_card.capabilities)  <span class="cm"># AgentCapabilities(streaming=True)</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">A2AAgent</div>
       <div class="glossary-def">Clase del SDK cliente que encapsula toda la comunicación con un servidor A2A. Expone <code>.run()</code> con los tres patrones (sync, stream, background).</div>
+      <pre><code><span class="cm"># Se crea con los datos de la AgentCard y la URL del servidor</span>
+<span class="kw">async with</span> <span class="cls">A2AAgent</span>(
+    name=agent_card.name,
+    description=agent_card.description,
+    agent_card=agent_card,
+    url=<span class="str">"http://localhost:5001/"</span>,
+) <span class="kw">as</span> agent:
+
+    <span class="cm"># Los 3 patrones — mismo objeto, distinto .run()</span>
+    r1 = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"42 + 58"</span>)                          <span class="cm"># sync</span>
+    s  = agent.<span class="fn">run</span>(<span class="str">"42 + 58"</span>, stream=<span class="kw">True</span>)                  <span class="cm"># streaming</span>
+    r3 = <span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"42 + 58"</span>, background=<span class="kw">True</span>)        <span class="cm"># polling</span>
+
+<span class="cm"># A2AAgent también puede llamar a una skill específica como herramienta:
+#   tool = agent.as_tool(name="Calculate", description="...")
+# Eso permite que un LLM decida cuándo invocar el agente remoto.</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">DefaultRequestHandler</div>
       <div class="glossary-def">El "router" del servidor A2A. Recibe las llamadas JSON-RPC, gestiona el ciclo de vida de las tareas, llama al AgentExecutor, y envía los eventos de vuelta al cliente.</div>
+      <pre><code><span class="cm"># Se construye con 3 piezas: tu executor, el store de tareas, y la AgentCard</span>
+request_handler = <span class="cls">DefaultRequestHandler</span>(
+    agent_executor=<span class="cls">CalculatorExecutor</span>(),   <span class="cm"># ← tu lógica</span>
+    task_store=<span class="cls">InMemoryTaskStore</span>(),          <span class="cm"># ← donde guarda las tareas</span>
+    agent_card=AGENT_CARD,                    <span class="cm"># ← la tarjeta del agente</span>
+)
+
+<span class="cm"># Internamente hace todo esto por ti:
+#   1. Parsea el JSON-RPC que llega por HTTP
+#   2. Crea una Task en el task_store
+#   3. Llama a executor.execute(context, event_queue)
+#   4. Lee los eventos de la cola y los reenvía al cliente
+#   5. Actualiza el estado de la Task en el store</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">InMemoryTaskStore</div>
       <div class="glossary-def">Almacén de tareas en memoria RAM (se pierde al reiniciar el servidor). En producción se reemplazaría por un store persistente (Redis, base de datos).</div>
+      <pre><code><span class="cm"># Uso básico — normalmente no lo tocas tú directamente</span>
+task_store = <span class="cls">InMemoryTaskStore</span>()
+<span class="cm"># El DefaultRequestHandler lo usa internamente para:
+#   - Guardar tareas en curso
+#   - Recuperarlas cuando el cliente hace poll por task_id
+#   - Actualizarlas con cada TaskStatusUpdateEvent
+
+# ¿Por qué importa el store?
+# Si el cliente se desconecta durante una tarea larga y después
+# vuelve con el continuation_token, el servidor busca la tarea
+# en el store para saber dónde está y reanudar el stream.</span>
+
+<span class="cm"># En producción, reemplazarías esto por un store Redis:</span>
+<span class="cm"># task_store = RedisTaskStore(redis_url="redis://localhost:6379")</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">JSON-RPC 2.0</div>
       <div class="glossary-def">Protocolo de llamada a procedimientos remotos sobre JSON. Cada petición tiene un <code>method</code> (ej. <code>"message/send"</code>), <code>params</code> y un <code>id</code> para correlacionar respuestas.</div>
+      <pre><code><span class="cm"># Así se ve una petición A2A real por HTTP (lo hace el SDK, no tú)</span>
+<span class="cm"># POST http://localhost:5001/</span>
+<span class="dec">{</span>
+  <span class="str">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="str">"id"</span>: <span class="str">"req-001"</span>,           <span class="cm">← para correlacionar petición con respuesta</span>
+  <span class="str">"method"</span>: <span class="str">"message/send"</span>,   <span class="cm">← qué operación</span>
+  <span class="str">"params"</span>: <span class="dec">{</span>
+    <span class="str">"message"</span>: <span class="dec">{</span>
+      <span class="str">"role"</span>: <span class="str">"user"</span>,
+      <span class="str">"parts"</span>: [<span class="dec">{</span> <span class="str">"text"</span>: <span class="str">"42 + 58"</span> <span class="dec">}]</span>
+    <span class="dec">}</span>
+  <span class="dec">}</span>
+<span class="dec">}</span>
+
+<span class="cm"># Para streaming se usa "message/stream" en vez de "message/send"
+# Para polling se usa "tasks/get" con el task_id</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">SSE (Server-Sent Events)</div>
       <div class="glossary-def">Tecnología HTTP estándar donde el servidor mantiene la conexión abierta y va enviando mensajes al cliente. Más simple que WebSockets para flujos unidireccionales (servidor → cliente).</div>
+      <pre><code><span class="cm"># Así se ve el wire format SSE real (texto plano por HTTP)</span>
+<span class="cm"># El servidor envía líneas "data: ..." separadas por \n\n</span>
+
+data: {"artifact":{"artifactId":"a1","parts":[{"text":"4"}]},"append":false}
+
+data: {"artifact":{"artifactId":"a1","parts":[{"text":"2"}]},"append":true}
+
+data: {"artifact":{"artifactId":"a1","parts":[{"text":" + 58 = 100"}]},"lastChunk":true}
+
+data: {"status":{"state":"TASK_STATE_COMPLETED"}}
+
+<span class="cm"># El cliente recibe cada "data:" como un evento separado en tiempo real
+# agent_framework.a2a.A2AAgent los parsea y te los entrega como objetos Python</span></code></pre>
     </div>
     <div class="glossary-item">
       <div class="glossary-term">A2AExecutor</div>
       <div class="glossary-def">Implementación de AgentExecutor que envuelve un <code>Agent</code> del framework de Microsoft. Traduce entre la API del framework y los eventos A2A. El demo no lo usa — implementa AgentExecutor directamente.</div>
+      <pre><code><span class="cm"># Usado en los ejemplos de Microsoft (04-hosting_a2a/)</span>
+<span class="cm"># Requiere Azure AI Foundry o OpenAI</span>
+agent = <span class="cls">Agent</span>(
+    client=<span class="cls">FoundryChatClient</span>(project_endpoint=<span class="str">"..."</span>, model=<span class="str">"gpt-4o"</span>, credential=<span class="cls">AzureCliCredential</span>()),
+    name=<span class="str">"PolicyAgent"</span>,
+    instructions=<span class="str">"Siempre responde con la política de devoluciones..."</span>,
+)
+executor = <span class="cls">A2AExecutor</span>(agent, stream=<span class="kw">True</span>)  <span class="cm"># ← envuelve el Agent en un AgentExecutor A2A</span>
+
+<span class="cm"># El demo hace lo mismo pero sin LLM:
+# CalculatorExecutor implementa AgentExecutor directamente</span>
+executor = <span class="cls">CalculatorExecutor</span>()  <span class="cm"># ← mismo interface, sin FoundryChatClient</span></code></pre>
     </div>
   </div>
 </section>
